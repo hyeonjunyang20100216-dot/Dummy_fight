@@ -111,12 +111,12 @@ function fighter(team,x,facing,type){
   const w=weapon(type);w.position.set(type==='spear'?.08:.24,-.02,0);f.refs.rightHand.add(w);f.weaponObj=w;return f;
 }
 function mobility(f){const n=+f.parts.leftLeg.attached + +f.parts.rightLeg.attached;if(n===2)return 1;if(n===1)return .54;return (f.parts.leftArm.attached||f.parts.rightArm.attached)?.15:0;}
-function profile(f){if(f.weaponHeld&&f.parts.rightArm.attached)return f.weapon==='spear'?{kind:'spear',reach:3.25,min:12,max:23,dur:.58,label:'창 찌르기'}:{kind:'knife',reach:1.9,min:15,max:28,dur:.46,label:'검 베기'};if(f.parts.leftArm.attached||f.parts.rightArm.attached)return{kind:'punch',reach:1.2,min:6,max:11,dur:.38,label:'남은 팔 공격'};if(f.parts.leftLeg.attached||f.parts.rightLeg.attached)return{kind:'kick',reach:1.45,min:8,max:13,dur:.44,label:'다리 공격'};return null;}
+function profile(f){if(f.weaponHeld&&f.parts.rightArm.attached)return f.weapon==='spear'?{kind:'spear',reach:3.45,min:12,max:23,dur:.68,label:'창 찌르기'}:{kind:'knife',reach:1.9,min:15,max:28,dur:.46,label:'검 베기'};if(f.parts.leftArm.attached||f.parts.rightArm.attached)return{kind:'punch',reach:1.2,min:6,max:11,dur:.38,label:'남은 팔 공격'};if(f.parts.leftLeg.attached||f.parts.rightLeg.attached)return{kind:'kick',reach:1.45,min:8,max:13,dur:.44,label:'다리 공격'};return null;}
 function attackProgress(f){return f.action==='attack'?1-f.actionTime/f.actionDur:0;}
 function parryProgress(f){return f.action==='parry'?1-f.actionTime/f.actionDur:0;}
 function activeAttack(f){const p=attackProgress(f);return f.action==='attack'&&p>.35&&p<.76;}
 function activeParry(f){const p=parryProgress(f);return f.action==='parry'&&p>.18&&p<.86;}
-function desiredRange(f){if(f.weaponHeld&&f.weapon==='spear')return 2.7;if(f.weaponHeld&&f.weapon==='knife')return 1.38;return 1.05;}
+function desiredRange(f){if(f.weaponHeld&&f.weapon==='spear')return 2.95;if(f.weaponHeld&&f.weapon==='knife')return 1.38;return 1.05;}
 function pick(enemy,a){const arr=TARGETS.filter(k=>enemy.parts[k].attached);if(!arr.length)return'torso';if(a.weaponHeld&&a.weapon==='spear'){const r=Math.random();if(r<.62)return'torso';if(r<.78)return'rightArm';if(r<.9)return'leftArm';return'head';}if(a.weaponHeld&&a.weapon==='knife'){const l=LIMBS.filter(k=>enemy.parts[k].attached);if(l.length&&Math.random()<.58)return l[Math.floor(Math.random()*l.length)];}return arr[Math.floor(Math.random()*arr.length)];}
 function startAttack(f,e){const p=profile(f);if(!p)return;f.action='attack';f.actionDur=p.dur;f.actionTime=p.dur;f.attackKind=p.kind;f.target=pick(e,f);f.hitDone=false;f.blocked=false;f.cool=.55+Math.random()*.45+(1-cfg().agg)*.55;}
 function startParry(f){if(!f.weaponHeld||!f.parts.rightArm.attached||f.parryCD>0)return false;f.action='parry';f.actionDur=.34;f.actionTime=.34;f.attackKind=null;f.hitDone=true;f.parryCD=.72+Math.random()*.3;f.reactionCD=.35;return true;}
@@ -147,7 +147,7 @@ function segmentDistance(s1,s2){let best=Infinity,p1=null,p2=null;for(let i=0;i<
 function spark(pos,c=0xffe7ad,n=10){for(let i=0;i<n;i++){const m=mesh(new THREE.SphereGeometry(.025+Math.random()*.035,8,6),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:1}));m.position.copy(pos);scene.add(m);S.sparks.push({mesh:m,vx:(Math.random()-.5)*4.2,vy:.8+Math.random()*3.2,vz:(Math.random()-.5)*2.8,life:.2+Math.random()*.25,max:.42});}}
 function clash(a,b,pos,parryBy=null){a.blocked=true;b.blocked=true;a.hitDone=true;b.hitDone=true;a.clashCD=.28;b.clashCD=.28;a.vx-=a.facing*.65;b.vx-=b.facing*.65;spark(pos,0xffe6a6,15);if(parryBy){const attacker=parryBy===a?b:a,def=parryBy;attacker.action='recover';attacker.actionDur=.34;attacker.actionTime=.34;attacker.stagger=.18;def.action='recover';def.actionDur=.12;def.actionTime=.12;log(def.team,'패링 성공 · 상대 공격 무력화');}else{a.action='recover';a.actionDur=.24;a.actionTime=.24;b.action='recover';b.actionDur=.24;b.actionTime=.24;log('SYSTEM','무기 충돌 · 두 공격이 서로 튕김');}}
 function checkWeaponClash(a,b){if(a.clashCD>0||b.clashCD>0)return;const sa=weaponSegment(a),sb=weaponSegment(b);if(!sa||!sb)return;const eligible=(activeAttack(a)||activeParry(a))&&(activeAttack(b)||activeParry(b));if(!eligible)return;const c=segmentDistance(sa,sb);if(c.distance<.16){const parryBy=activeParry(a)&&activeAttack(b)?a:activeParry(b)&&activeAttack(a)?b:null;clash(a,b,c.point,parryBy);}}
-function resolvePendingHit(a,d){if(a.action!=='attack'||a.hitDone||a.blocked)return;const prog=attackProgress(a),trigger=a.attackKind==='spear'?.58:.55;if(prog<trigger)return;a.hitDone=true;const p=profile(a);if(!p)return;const dist=Math.abs(d.x-a.x);if(dist>p.reach+.35){log(a.team,p.label+' 빗나감');return;}if(d.action==='evade'&&Math.random()<.72){log(a.team,p.label+' 회피됨');return;}if(Math.random()>.8+cfg().agg*.09){log(a.team,p.label+' 빗나감');return;}const name=d.parts[a.target]?.attached?a.target:'torso',part=d.parts[name],damage=p.min+Math.random()*(p.max-p.min),wf=p.kind==='knife'?1.15:p.kind==='spear'?.92:.4;part.hp=Math.max(0,part.hp-damage);d.bleed+=damage*.11*wf;d.bleedRate+=damage*.0025*wf;d.stagger=.12+damage*.007;d.vx+=a.facing*damage*.045;spark(point(d,name),a.color,7);log(a.team,p.label+' → '+LABEL[name]+' ('+Math.round(damage)+' 손상)');if(LIMBS.includes(name)&&part.hp<=0&&part.attached){const chance=cfg().detach*(p.kind==='knife'?1.15:p.kind==='spear'?.72:.14);if(Math.random()<chance)detachPart(d,name,a.facing);else{part.hp=3;d.bleedRate+=.035;}}finishCheck();}
+function resolvePendingHit(a,d){if(a.action!=='attack'||a.hitDone||a.blocked)return;const prog=attackProgress(a),trigger=a.attackKind==='spear'?.62:.55;if(prog<trigger)return;a.hitDone=true;const p=profile(a);if(!p)return;const dist=Math.abs(d.x-a.x);if(dist>p.reach+.35){log(a.team,p.label+' 빗나감');return;}if(d.action==='evade'&&Math.random()<.72){log(a.team,p.label+' 회피됨');return;}if(Math.random()>.8+cfg().agg*.09){log(a.team,p.label+' 빗나감');return;}const name=d.parts[a.target]?.attached?a.target:'torso',part=d.parts[name],damage=p.min+Math.random()*(p.max-p.min),wf=p.kind==='knife'?1.15:p.kind==='spear'?.92:.4;part.hp=Math.max(0,part.hp-damage);d.bleed+=damage*.11*wf;d.bleedRate+=damage*.0025*wf;d.stagger=.12+damage*.007;d.vx+=a.facing*damage*.045;spark(point(d,name),a.color,7);log(a.team,p.label+' → '+LABEL[name]+' ('+Math.round(damage)+' 손상)');if(LIMBS.includes(name)&&part.hp<=0&&part.attached){const chance=cfg().detach*(p.kind==='knife'?1.15:p.kind==='spear'?.72:.14);if(Math.random()<chance)detachPart(d,name,a.facing);else{part.hp=3;d.bleedRate+=.035;}}finishCheck();}
 function debrisMesh(f,name){const g=new THREE.Group(),m=mat(f.color,.28,.38),leg=name.includes('Leg');const a=limb(leg?.16:.13,leg?.68:.52,m);a.position.y=leg?.31:.25;const b=limb(leg?.135:.105,leg?.65:.5,m);b.position.y=leg?-.43:-.32;g.add(a,b);return g;}
 function detachPart(f,name,dir){const part=f.parts[name];if(!part.attached)return;const pos=point(f,name);part.attached=false;part.hp=0;f.pivots[name].visible=false;const m=debrisMesh(f,name);m.position.copy(pos);scene.add(m);S.debris.push({mesh:m,vx:dir*(1.3+Math.random()),vy:2.2+Math.random(),vz:(Math.random()-.5),vr:(Math.random()-.5)*5,life:18});f.bleed+=5.5;f.bleedRate+=name.includes('Leg')?.22:.17;spark(pos,f.color,10);log(f.team,LABEL[name]+' 파츠 분리');if(name==='rightArm'&&f.weaponHeld){f.weaponHeld=false;f.weaponObj.visible=false;const w=weapon(f.weapon);w.position.copy(pos);scene.add(w);S.weapons.push({mesh:w,vx:dir*(1+Math.random()),vy:1.5+Math.random()*.7,vz:(Math.random()-.5)*.8,vr:(Math.random()-.5)*5});log(f.team,'오른팔 분리 → 무기 드롭');}}
 function bleed(f,dt){const ex=(1-f.parts.torso.hp/f.parts.torso.max)*.018+(1-f.parts.head.hp/f.parts.head.max)*.009;f.bleed+=(f.bleedRate+ex)*dt*8;f.bleedRate*=Math.pow(.996,dt*60);}
@@ -157,7 +157,7 @@ function smooth(a,b,x){const t=THREE.MathUtils.clamp((x-a)/(b-a),0,1);return t*t
 function animate(f,dt){
   const t=S.time,m=Math.min(1,Math.abs(f.vx)/3),walk=Math.sin(t*7+f.seed)*m,ap=attackProgress(f),pp=parryProgress(f),ps=Math.sin(Math.min(1,pp)*Math.PI);
   const wind=smooth(0,.28,ap)*(1-smooth(.28,.46,ap)),strike=smooth(.25,.56,ap)*(1-smooth(.62,.86,ap)),recover=smooth(.62,1,ap);
-  const lunge=f.action==='attack'?(f.attackKind==='spear'?.46*strike:f.attackKind==='knife'?.24*strike:0):0;
+  const lunge=f.action==='attack'?(f.attackKind==='spear'?.62*strike:f.attackKind==='knife'?.24*strike:0):0;
   f.group.position.set(f.x+f.facing*lunge,0,f.z);
   const target=f.facing>0?0:Math.PI;let diff=((target-f.group.rotation.y+Math.PI)%(Math.PI*2))-Math.PI;f.group.rotation.y+=diff*Math.min(1,dt*9);
 
@@ -165,7 +165,7 @@ function animate(f,dt){
   f.waistPivot.position.y=baseY-(f.action==='attack'?.07*strike:0);
   f.pelvisPivot.rotation.y=THREE.MathUtils.lerp(f.pelvisPivot.rotation.y,-walk*.035,Math.min(1,dt*8));
   let torsoZ=f.stagger>0?-.08:f.vx*.018,torsoY=0,torsoX=0;
-  if(f.action==='attack'&&f.attackKind==='spear'){torsoZ=-.11*strike+.045*wind;torsoY=-.08*wind+.05*strike;torsoX=-.035*strike;}
+  if(f.action==='attack'&&f.attackKind==='spear'){torsoZ=0;torsoY=0;torsoX=0;}
   if(f.action==='attack'&&f.attackKind==='knife'){torsoZ=-.055*strike;torsoY=-.38*wind+.58*strike-.18*recover;torsoX=-.03*strike;}
   f.torsoPivot.rotation.z=THREE.MathUtils.lerp(f.torsoPivot.rotation.z,torsoZ,Math.min(1,dt*10));
   f.torsoPivot.rotation.y=THREE.MathUtils.lerp(f.torsoPivot.rotation.y,torsoY,Math.min(1,dt*10));
@@ -176,7 +176,7 @@ function animate(f,dt){
   f.pivots.head.rotation.x=THREE.MathUtils.lerp(f.pivots.head.rotation.x,(f.action==='attack'&&f.attackKind==='spear'?-0.04*strike:0),Math.min(1,dt*8));
 
   let leftLeg=.17*walk,rightLeg=-.17*walk;
-  if(f.action==='attack'&&f.attackKind==='spear'){leftLeg-=.18*wind;rightLeg+=.32*strike;}
+  if(f.action==='attack'&&f.attackKind==='spear'){leftLeg-=.12*wind+.08*strike;rightLeg+=.38*strike;}
   if(f.action==='attack'&&f.attackKind==='knife'){leftLeg-=.13*wind;rightLeg+=.2*strike;}
   if(f.attackKind==='kick'&&f.action==='attack'){leftLeg+=.82*strike;rightLeg+=.42*strike;}
   if(f.parts.leftLeg.attached){f.pivots.leftLeg.rotation.x=leftLeg;f.refs.leftKnee.rotation.x=.14*Math.max(0,-walk)+.09*strike;f.refs.leftAnkle.rotation.x=-.09*walk-.04*strike;}
@@ -185,9 +185,13 @@ function animate(f,dt){
   if(f.parts.leftArm.attached){
     let lx=-.08-.1*walk,lz=.08,ly=0;
     if(f.weaponHeld&&f.weapon==='spear'){
-      lx=-.02;ly=-.08;lz=1.02;
-      f.refs.leftElbow.rotation.z=.28;
-      if(f.action==='attack'){lz=1.02;f.refs.leftElbow.rotation.z=.28;}
+      lx=0;ly=0;lz=1.10;
+      f.refs.leftElbow.rotation.z=.52;
+      if(f.action==='attack'){
+        const thrust=smooth(.18,.58,ap)*(1-smooth(.72,1,ap));
+        lz=1.10+.08*thrust;
+        f.refs.leftElbow.rotation.z=.52-.22*thrust;
+      }
       if(f.action==='parry'){lz=.72+.38*ps;f.refs.leftElbow.rotation.z=.5+.16*ps;}
     }else{
       f.refs.leftElbow.rotation.z=0;
@@ -202,10 +206,11 @@ function animate(f,dt){
   if(f.parts.rightArm.attached){
     let rx=-.06+.1*walk,rz=.15,ry=0;f.refs.rightElbow.rotation.z=0;
     if(f.weaponHeld&&f.weapon==='spear'){
-      rx=-.015;ry=0;rz=1.02;f.refs.rightElbow.rotation.z=.34;
+      rx=0;ry=0;rz=1.22;f.refs.rightElbow.rotation.z=.48;
       if(f.action==='attack'){
-        rz=1.02;
-        f.refs.rightElbow.rotation.z=.34;
+        const thrust=smooth(.18,.58,ap)*(1-smooth(.72,1,ap));
+        rz=1.22+.30*thrust;
+        f.refs.rightElbow.rotation.z=.48-.43*thrust;
       }else if(f.action==='parry'){
         rz=.74+.34*ps;ry=.12*ps;f.refs.rightElbow.rotation.z=.5+.12*ps;
       }
