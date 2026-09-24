@@ -6,6 +6,14 @@
   <meta name="theme-color" content="#090d14" />
   <title>Dummy Fight 3D</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.166.1/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <main class="app-shell">
@@ -13,7 +21,7 @@
       <div>
         <p class="eyebrow">AUTONOMOUS 3D COMBAT SIMULATION</p>
         <h1>Dummy Fight 3D</h1>
-        <p class="subtitle">빨강은 검, 파랑은 창. 3D 더미가 자동으로 전투하며 파츠 상태와 출혈량에 따라 행동이 달라집니다.</p>
+        <p class="subtitle">검과 창이 실제 3D 궤적으로 충돌하고, 공격·패링·파츠 손상에 따라 전투가 계속 바뀝니다.</p>
       </div>
       <div class="controls">
         <button id="startBtn" class="primary">시작</button>
@@ -26,63 +34,43 @@
         </label>
       </div>
     </header>
-
     <section class="scoreboard">
       <article class="fighter-card red-card">
-        <div class="fighter-title">
-          <div><span class="dot red"></span><strong>RED DUMMY</strong></div>
-          <span class="weapon-badge">SHORT BLADE</span>
-        </div>
+        <div class="fighter-title"><div><span class="dot red"></span><strong>RED DUMMY</strong></div><span class="weapon-badge">SHORT BLADE</span></div>
         <div class="meter-row"><span>출혈량</span><strong id="redBleedText">0 / 100</strong></div>
         <div class="meter"><div id="redBleedBar" class="meter-fill red-fill"></div></div>
         <div id="redStatus" class="limb-grid"></div>
       </article>
-
       <div class="round-panel">
-        <span class="round-label">FIRST TO</span>
-        <strong id="bleedLimitText">100</strong>
-        <span class="round-label">BLEED LOSES</span>
+        <span class="round-label">FIRST TO</span><strong id="bleedLimitText">100</strong><span class="round-label">BLEED LOSES</span>
         <div id="matchState" class="match-state">READY</div>
       </div>
-
       <article class="fighter-card blue-card">
-        <div class="fighter-title">
-          <div><span class="dot blue"></span><strong>BLUE DUMMY</strong></div>
-          <span class="weapon-badge">SPEAR</span>
-        </div>
+        <div class="fighter-title"><div><span class="dot blue"></span><strong>BLUE DUMMY</strong></div><span class="weapon-badge">SPEAR</span></div>
         <div class="meter-row"><span>출혈량</span><strong id="blueBleedText">0 / 100</strong></div>
         <div class="meter"><div id="blueBleedBar" class="meter-fill blue-fill"></div></div>
         <div id="blueStatus" class="limb-grid"></div>
       </article>
     </section>
-
     <section class="arena-card">
       <div class="arena-head">
-        <div><span class="live-pill"><i></i> 3D SIMULATION</span><span id="timeLabel">00.0s</span></div>
-        <div class="legend"><span>Three.js 기반 3D 장면</span><span>오른팔 분리 시 무기 드롭</span></div>
+        <div><span class="live-pill"><i></i> HIGH QUALITY 3D</span><span id="timeLabel">00.0s</span><span class="clash-stat">CLASHES <b id="clashCount">0</b></span></div>
+        <div class="legend"><span>마우스 드래그: 카메라</span><span>휠: 줌</span><span>무기 충돌 시 공격 취소/튕김</span></div>
       </div>
       <div class="canvas-wrap">
         <div id="viewport3d" class="viewport3d" aria-label="3D 더미 전투 시뮬레이션"></div>
-        <div class="scanlines"></div>
-        <div id="winnerOverlay" class="winner-overlay hidden">
-          <p>MATCH COMPLETE</p>
-          <h2 id="winnerText">RED WINS</h2>
-          <button id="againBtn" class="primary">다시 시뮬레이션</button>
-        </div>
+        <div class="corner corner-a"></div><div class="corner corner-b"></div><div class="scanlines"></div>
+        <div id="winnerOverlay" class="winner-overlay hidden"><p>MATCH COMPLETE</p><h2 id="winnerText">RED WINS</h2><button id="againBtn" class="primary">다시 시뮬레이션</button></div>
       </div>
     </section>
-
     <section class="bottom-grid">
-      <article class="event-card">
-        <div class="section-title"><h2>전투 로그</h2><button id="clearLogBtn" class="text-button">비우기</button></div>
-        <div id="combatLog" class="combat-log"></div>
-      </article>
+      <article class="event-card"><div class="section-title"><h2>전투 로그</h2><button id="clearLogBtn" class="text-button">비우기</button></div><div id="combatLog" class="combat-log"></div></article>
       <article class="settings-card">
         <div class="section-title"><h2>시뮬레이션 설정</h2></div>
         <label><span>패배 출혈량</span><div class="input-row"><input id="bleedLimit" type="range" min="60" max="160" value="100" step="5" /><output id="bleedLimitValue">100</output></div></label>
-        <label><span>절단/분리 확률</span><div class="input-row"><input id="detachChance" type="range" min="0" max="100" value="38" step="1" /><output id="detachChanceValue">38%</output></div></label>
+        <label><span>파츠 분리 확률</span><div class="input-row"><input id="detachChance" type="range" min="0" max="100" value="38" step="1" /><output id="detachChanceValue">38%</output></div></label>
         <label><span>AI 공격성</span><div class="input-row"><input id="aggression" type="range" min="35" max="100" value="72" step="1" /><output id="aggressionValue">72%</output></div></label>
-        <p class="safety-note">비고어 3D 시뮬레이션입니다. 파츠는 더미 부품처럼 분리되며 출혈은 수치와 게이지로만 표시합니다.</p>
+        <p class="safety-note">비고어 더미 시뮬레이션입니다. 파츠는 기계식 마네킹 부품처럼 분리되며 출혈은 수치로만 처리합니다.</p>
       </article>
     </section>
   </main>
