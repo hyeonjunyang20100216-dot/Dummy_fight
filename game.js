@@ -139,7 +139,7 @@ function animate(f,dt){
     if(f.weaponHeld&&f.weapon==='spear'){
       lx=-.02;ly=-.08;lz=1.02;
       f.refs.leftElbow.rotation.z=.28;
-      if(f.action==='attack'){lz=1.02+.06*strike;f.refs.leftElbow.rotation.z=.28+.18*strike;}
+      if(f.action==='attack'){lz=1.02;f.refs.leftElbow.rotation.z=.28;}
       if(f.action==='parry'){lz=.72+.38*ps;f.refs.leftElbow.rotation.z=.5+.16*ps;}
     }else{
       f.refs.leftElbow.rotation.z=0;
@@ -154,8 +154,8 @@ function animate(f,dt){
     if(f.weaponHeld&&f.weapon==='spear'){
       rx=-.015;ry=0;rz=1.02;f.refs.rightElbow.rotation.z=.34;
       if(f.action==='attack'){
-        rz=1.04+.025*strike;
-        f.refs.rightElbow.rotation.z=.34+.34*strike;
+        rz=1.02;
+        f.refs.rightElbow.rotation.z=.34;
       }else if(f.action==='parry'){
         rz=.74+.34*ps;ry=.12*ps;f.refs.rightElbow.rotation.z=.5+.12*ps;
       }
