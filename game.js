@@ -17,8 +17,8 @@ const S={running:false,finished:false,time:0,speed:1,red:null,blue:null,debris:[
 
 function mat(c,metal=.25,rough=.45){return new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough});}
 function mesh(g,m){const x=new THREE.Mesh(g,m);x.castShadow=true;x.receiveShadow=true;return x;}
-function limb(radius,len,m){const g=new THREE.Group(),b=mesh(new THREE.CylinderGeometry(radius,radius,len,16),m);g.add(b);const a=mesh(new THREE.SphereGeometry(radius,16,12),m);a.position.y=len/2;g.add(a);const c=a.clone();c.position.y=-len/2;g.add(c);return g;}
-function joint(r=.12){return mesh(new THREE.SphereGeometry(r,16,12),mat(0x080d14,.55,.26));}
+function limb(radius,len,m,lower=.82){const g=new THREE.Group();const b=mesh(new THREE.CylinderGeometry(radius,Math.max(.055,radius*lower),len,16),m);g.add(b);const capR=radius*.72;const a=mesh(new THREE.SphereGeometry(capR,14,10),m);a.scale.y=.72;a.position.y=len/2;g.add(a);const c=a.clone();c.position.y=-len/2;g.add(c);return g;}
+function joint(r=.12){const j=mesh(new THREE.SphereGeometry(r,16,12),mat(0x080d14,.55,.26));j.scale.y=.82;return j;}
 function weapon(type){
   const g=new THREE.Group(),grip=new THREE.Object3D(),tip=new THREE.Object3D(),rear=new THREE.Object3D();g.add(grip,tip,rear);
   if(type==='spear'){
@@ -45,17 +45,24 @@ function environment(){
   const grid=new THREE.GridHelper(16,24,0x35445a,0x202936);grid.position.y=.015;grid.material.transparent=true;grid.material.opacity=.34;scene.add(grid);
   const ring=mesh(new THREE.TorusGeometry(8,.085,12,100),mat(0x59687d,.78,.22));ring.rotation.x=Math.PI/2;ring.position.y=.045;scene.add(ring);
 }
-function addArm(f,side){const s=side==='left'?-1:1,p=new THREE.Group();p.position.set(.58*s,.67,0);f.torsoPivot.add(p);f.pivots[side+'Arm']=p;const up=limb(.13,.62,f.bodyMat);up.position.y=-.31;p.add(up);const elbow=new THREE.Group();elbow.position.y=-.63;p.add(elbow);elbow.add(joint(.11));const low=limb(.105,.56,f.bodyMat);low.position.y=-.3;elbow.add(low);const hand=joint(.115);hand.position.y=-.61;elbow.add(hand);const anchor=new THREE.Group();anchor.position.set(0,-.61,0);elbow.add(anchor);f.refs[side+'Hand']=anchor;f.refs[side+'Elbow']=elbow;}
-function addLeg(f,side){const s=side==='left'?-1:1,p=new THREE.Group();p.position.set(.24*s,-1.03,0);f.torsoPivot.add(p);f.pivots[side+'Leg']=p;const up=limb(.16,.78,f.bodyMat);up.position.y=-.39;p.add(up);const knee=new THREE.Group();knee.position.y=-.8;p.add(knee);knee.add(joint(.13));const low=limb(.135,.76,f.bodyMat);low.position.y=-.39;knee.add(low);const foot=mesh(new THREE.BoxGeometry(.28,.13,.48),f.bodyMat);foot.position.set(0,-.81,.13);knee.add(foot);}
+function addArm(f,side){const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.53*sg,.65,0);f.torsoPivot.add(p);f.pivots[side+'Arm']=p;const shoulder=joint(.13);p.add(shoulder);const up=limb(.125,.64,f.bodyMat,.78);up.position.y=-.34;p.add(up);const elbow=new THREE.Group();elbow.position.y=-.66;p.add(elbow);elbow.add(joint(.095));const low=limb(.1,.58,f.bodyMat,.7);low.position.y=-.31;elbow.add(low);const hand=mesh(new THREE.BoxGeometry(.16,.2,.12),f.bodyMat);hand.position.y=-.63;hand.rotation.z=.04*sg;elbow.add(hand);const anchor=new THREE.Group();anchor.position.set(0,-.63,0);elbow.add(anchor);f.refs[side+'Hand']=anchor;f.refs[side+'Elbow']=elbow;}
+function addLeg(f,side){const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.22*sg,-.96,0);f.torsoPivot.add(p);f.pivots[side+'Leg']=p;const hip=joint(.14);p.add(hip);const up=limb(.17,.84,f.bodyMat,.78);up.position.y=-.44;p.add(up);const knee=new THREE.Group();knee.position.y=-.86;p.add(knee);knee.add(joint(.115));const low=limb(.135,.8,f.bodyMat,.68);low.position.y=-.41;knee.add(low);const foot=mesh(new THREE.BoxGeometry(.26,.13,.5),f.bodyMat);foot.position.set(0,-.84,.14);foot.rotation.x=-.06;knee.add(foot);}
 function fighter(team,x,facing,type){
   const color=team==='red'?0xff3b47:0x3d7cff;
   const f={team,color,x,z:team==='red'?-.58:.58,facing,weapon:type,weaponHeld:true,bleed:0,bleedRate:0,parts:parts(),vx:0,cool:.45+Math.random()*.35,action:'neutral',actionTime:0,actionDur:0,attackKind:null,target:null,hitDone:false,blocked:false,stagger:0,reactionCD:0,parryCD:0,clashCD:0,seed:Math.random()*1000,group:new THREE.Group(),pivots:{},refs:{},bodyMat:mat(color,.32,.34)};
   f.group.position.set(x,0,f.z);scene.add(f.group);
   const sh=new THREE.Mesh(new THREE.CircleGeometry(.72,32),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.32}));sh.rotation.x=-Math.PI/2;sh.position.y=.03;f.group.add(sh);f.shadow=sh;
-  const tp=new THREE.Group();tp.position.y=2.55;f.group.add(tp);f.torsoPivot=tp;f.pivots.torso=tp;
-  const torso=mesh(new THREE.CylinderGeometry(.43,.5,1.34,20),f.bodyMat);tp.add(torso);const shoulder=mesh(new THREE.SphereGeometry(.51,20,16),f.bodyMat);shoulder.scale.y=.58;shoulder.position.y=.62;tp.add(shoulder);const hip=mesh(new THREE.SphereGeometry(.42,20,16),f.bodyMat);hip.scale.y=.58;hip.position.y=-.64;tp.add(hip);
-  const chest=mesh(new THREE.BoxGeometry(.56,.74,.16),mat(color,.65,.2));chest.position.set(0,.1,.43);tp.add(chest);
-  const hp=new THREE.Group();hp.position.y=1.08;tp.add(hp);f.pivots.head=hp;const neck=mesh(new THREE.CylinderGeometry(.11,.11,.24,12),f.bodyMat);neck.position.y=-.15;hp.add(neck);const head=mesh(new THREE.SphereGeometry(.39,22,18),f.bodyMat);head.position.y=.27;hp.add(head);const visor=mesh(new THREE.BoxGeometry(.34,.085,.06),mat(0xeef5ff,.3,.15));visor.position.set(0,.3,.355);hp.add(visor);
+  const tp=new THREE.Group();tp.position.y=2.62;f.group.add(tp);f.torsoPivot=tp;f.pivots.torso=tp;
+  const chest=mesh(new THREE.BoxGeometry(.9,.92,.42),f.bodyMat);chest.position.y=.28;chest.scale.x=1.04;tp.add(chest);
+  const upperChest=mesh(new THREE.BoxGeometry(1.02,.34,.4),f.bodyMat);upperChest.position.y=.73;upperChest.scale.z=.92;tp.add(upperChest);
+  const abdomen=mesh(new THREE.CylinderGeometry(.32,.37,.5,16),f.bodyMat);abdomen.position.y=-.42;tp.add(abdomen);
+  const pelvis=mesh(new THREE.BoxGeometry(.7,.36,.38),f.bodyMat);pelvis.position.y=-.79;tp.add(pelvis);
+  const sternum=mesh(new THREE.BoxGeometry(.38,.7,.05),mat(color,.7,.18));sternum.position.set(0,.28,.235);tp.add(sternum);
+  const hp=new THREE.Group();hp.position.y=1.18;tp.add(hp);f.pivots.head=hp;
+  const neck=mesh(new THREE.CylinderGeometry(.105,.12,.28,12),f.bodyMat);neck.position.y=-.17;hp.add(neck);
+  const head=mesh(new THREE.SphereGeometry(.37,22,18),f.bodyMat);head.scale.set(.86,1.04,.9);head.position.y=.27;hp.add(head);
+  const jaw=mesh(new THREE.BoxGeometry(.44,.2,.38),f.bodyMat);jaw.position.set(0,.05,.02);jaw.scale.x=.92;hp.add(jaw);
+  const visor=mesh(new THREE.BoxGeometry(.34,.075,.045),mat(0xeef5ff,.3,.15));visor.position.set(0,.33,.335);hp.add(visor);
   addArm(f,'left');addArm(f,'right');addLeg(f,'left');addLeg(f,'right');
   const w=weapon(type);w.position.set(type==='spear'?.08:.24,-.02,0);f.refs.rightHand.add(w);f.weaponObj=w;return f;
 }
@@ -102,15 +109,75 @@ function detachPart(f,name,dir){const part=f.parts[name];if(!part.attached)retur
 function bleed(f,dt){const ex=(1-f.parts.torso.hp/f.parts.torso.max)*.018+(1-f.parts.head.hp/f.parts.head.max)*.009;f.bleed+=(f.bleedRate+ex)*dt*8;f.bleedRate*=Math.pow(.996,dt*60);}
 function finishCheck(){const l=cfg().limit;if(S.red.bleed>=l||S.blue.bleed>=l)finish(S.red.bleed>=l?S.blue:S.red);}
 function finish(w){if(S.finished)return;S.finished=true;S.running=false;ui.state.textContent='COMPLETE';ui.live.classList.remove('running');ui.winner.textContent=w.team.toUpperCase()+' WINS';ui.winner.style.color='#'+w.color.toString(16).padStart(6,'0');ui.overlay.classList.remove('hidden');log('SYSTEM',w.team.toUpperCase()+' 승리. 상대가 출혈 한계에 먼저 도달함.');}
+function smooth(a,b,x){const t=THREE.MathUtils.clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);}
 function animate(f,dt){
-  const t=S.time,m=Math.min(1,Math.abs(f.vx)/3),walk=Math.sin(t*7+f.seed)*m,ap=attackProgress(f),pp=parryProgress(f),as=Math.sin(Math.min(1,ap)*Math.PI),ps=Math.sin(Math.min(1,pp)*Math.PI);
-  f.group.position.set(f.x,0,f.z);const target=f.facing>0?0:Math.PI;let diff=((target-f.group.rotation.y+Math.PI)%(Math.PI*2))-Math.PI;f.group.rotation.y+=diff*Math.min(1,dt*9);
-  f.torsoPivot.position.y=2.55+Math.abs(Math.sin(t*7+f.seed))*.08*m;f.torsoPivot.rotation.z=THREE.MathUtils.lerp(f.torsoPivot.rotation.z,f.stagger>0?-.08*f.facing:f.vx*.02,Math.min(1,dt*8));f.pivots.head.rotation.z=Math.sin(t*2.1+f.seed)*.025;
-  if(f.parts.leftLeg.attached)f.pivots.leftLeg.rotation.x=.19*walk+(f.attackKind==='kick'&&f.action==='attack'?.85*as:0);if(f.parts.rightLeg.attached)f.pivots.rightLeg.rotation.x=-.19*walk+(f.attackKind==='kick'&&f.action==='attack'?.45*as:0);
-  if(f.parts.leftArm.attached){let lx=-.12-.14*walk,lz=.08,ly=0;if(f.weaponHeld&&f.weapon==='spear'){lz=.92;lx=-.06;ly=-.18;}if(f.action==='parry'){lz=.68+.42*ps;lx=-.2;}if(!f.weaponHeld&&f.attackKind==='punch'&&f.action==='attack')lz=.95*as;f.pivots.leftArm.rotation.set(lx,ly,lz);}
-  if(f.parts.rightArm.attached){let rx=-.08+.12*walk,rz=.13,ry=0;if(f.weaponHeld){if(f.weapon==='spear'){rz=.96;rx=-.03;ry=.02;f.refs.rightElbow.rotation.z=.38;if(f.action==='attack'){const thrust=Math.sin(Math.min(1,ap)*Math.PI);rz=1.14+.12*thrust;f.refs.rightElbow.rotation.z=.38+.72*thrust;}else if(f.action==='parry'){f.refs.rightElbow.rotation.z=.62+.28*ps;} }else{f.refs.rightElbow.rotation.z=0;rz=.28;rx=-.12;if(f.action==='attack'){rz=.4+1.0*as;rx=-.25-.45*as;ry=-.2*as;}}if(f.action==='parry'){rz=.55+1.05*ps;rx=-.12-.25*ps;ry=.28*ps;}}else{f.refs.rightElbow.rotation.z=0;if(f.attackKind==='punch'&&f.action==='attack')rz=1.05*as;}f.pivots.rightArm.rotation.set(rx,ry,rz);}
-  if(f.weaponObj&&f.weaponHeld){f.weaponObj.position.y=-.02;f.weaponObj.position.z=0;if(f.weapon==='spear'){f.weaponObj.position.x=.08;f.weaponObj.rotation.set(0,0,0);}else{f.weaponObj.position.x=.24;f.weaponObj.rotation.set(0,0,f.action==='parry'?-.45*ps:0);}}
-  f.shadow.scale.setScalar(1+m*.07);
+  const t=S.time,m=Math.min(1,Math.abs(f.vx)/3),walk=Math.sin(t*7+f.seed)*m,ap=attackProgress(f),pp=parryProgress(f),ps=Math.sin(Math.min(1,pp)*Math.PI);
+  const wind=smooth(0,.28,ap)*(1-smooth(.28,.46,ap)),strike=smooth(.25,.56,ap)*(1-smooth(.62,.86,ap)),recover=smooth(.62,1,ap);
+  const lunge=f.action==='attack'?(f.attackKind==='spear'?.46*strike:f.attackKind==='knife'?.24*strike:0):0;
+  f.group.position.set(f.x+f.facing*lunge,0,f.z);
+  const target=f.facing>0?0:Math.PI;let diff=((target-f.group.rotation.y+Math.PI)%(Math.PI*2))-Math.PI;f.group.rotation.y+=diff*Math.min(1,dt*9);
+
+  const baseY=2.62+Math.abs(Math.sin(t*7+f.seed))*.055*m;
+  f.torsoPivot.position.y=baseY-(f.action==='attack'?.07*strike:0);
+  let torsoZ=f.stagger>0?-.08:f.vx*.018,torsoY=0,torsoX=0;
+  if(f.action==='attack'&&f.attackKind==='spear'){torsoZ=-.11*strike+.045*wind;torsoY=-.08*wind+.05*strike;torsoX=-.035*strike;}
+  if(f.action==='attack'&&f.attackKind==='knife'){torsoZ=-.055*strike;torsoY=-.38*wind+.58*strike-.18*recover;torsoX=-.03*strike;}
+  f.torsoPivot.rotation.z=THREE.MathUtils.lerp(f.torsoPivot.rotation.z,torsoZ,Math.min(1,dt*10));
+  f.torsoPivot.rotation.y=THREE.MathUtils.lerp(f.torsoPivot.rotation.y,torsoY,Math.min(1,dt*10));
+  f.torsoPivot.rotation.x=THREE.MathUtils.lerp(f.torsoPivot.rotation.x,torsoX,Math.min(1,dt*10));
+  f.pivots.head.rotation.z=Math.sin(t*2.1+f.seed)*.018-(f.action==='attack'?.025*strike:0);
+
+  let leftLeg=.17*walk,rightLeg=-.17*walk;
+  if(f.action==='attack'&&f.attackKind==='spear'){leftLeg-=.18*wind;rightLeg+=.32*strike;}
+  if(f.action==='attack'&&f.attackKind==='knife'){leftLeg-=.13*wind;rightLeg+=.2*strike;}
+  if(f.attackKind==='kick'&&f.action==='attack'){leftLeg+=.82*strike;rightLeg+=.42*strike;}
+  if(f.parts.leftLeg.attached)f.pivots.leftLeg.rotation.x=leftLeg;
+  if(f.parts.rightLeg.attached)f.pivots.rightLeg.rotation.x=rightLeg;
+
+  if(f.parts.leftArm.attached){
+    let lx=-.08-.1*walk,lz=.08,ly=0;
+    if(f.weaponHeld&&f.weapon==='spear'){
+      lx=-.02;ly=-.08;lz=1.02;
+      f.refs.leftElbow.rotation.z=.28;
+      if(f.action==='attack'){lz=1.02+.06*strike;f.refs.leftElbow.rotation.z=.28+.18*strike;}
+      if(f.action==='parry'){lz=.72+.38*ps;f.refs.leftElbow.rotation.z=.5+.16*ps;}
+    }else{
+      f.refs.leftElbow.rotation.z=0;
+      if(f.action==='parry'){lz=.62+.38*ps;lx=-.18;}
+      if(!f.weaponHeld&&f.attackKind==='punch'&&f.action==='attack')lz=.92*strike;
+    }
+    f.pivots.leftArm.rotation.set(lx,ly,lz);
+  }
+
+  if(f.parts.rightArm.attached){
+    let rx=-.06+.1*walk,rz=.15,ry=0;f.refs.rightElbow.rotation.z=0;
+    if(f.weaponHeld&&f.weapon==='spear'){
+      rx=-.015;ry=0;rz=1.02;f.refs.rightElbow.rotation.z=.34;
+      if(f.action==='attack'){
+        rz=1.04+.025*strike;
+        f.refs.rightElbow.rotation.z=.34+.34*strike;
+      }else if(f.action==='parry'){
+        rz=.74+.34*ps;ry=.12*ps;f.refs.rightElbow.rotation.z=.5+.12*ps;
+      }
+    }else if(f.weaponHeld&&f.weapon==='knife'){
+      rz=.24;rx=-.1;
+      if(f.action==='attack'){rz=.18-.72*wind+1.38*strike-.45*recover;rx=-.12-.18*strike;ry=-.34*wind+.24*strike;}
+      if(f.action==='parry'){rz=.5+.9*ps;rx=-.12-.22*ps;ry=.22*ps;}
+    }else if(f.attackKind==='punch'&&f.action==='attack')rz=.98*strike;
+    f.pivots.rightArm.rotation.set(rx,ry,rz);
+  }
+
+  if(f.weaponObj&&f.weaponHeld){
+    f.weaponObj.position.y=-.02;f.weaponObj.position.z=0;
+    if(f.weapon==='spear'){
+      f.weaponObj.position.x=.08;
+      f.weaponObj.rotation.set(0,0,0);
+    }else{
+      f.weaponObj.position.x=.24;
+      f.weaponObj.rotation.set(0,0,f.action==='parry'?-.35*ps:0);
+    }
+  }
+  f.shadow.scale.setScalar(1+m*.06+(f.action==='attack'?.04*strike:0));
 }
 function physics(dt){for(const d of S.debris){d.vy-=5.8*dt;d.mesh.position.x+=d.vx*dt;d.mesh.position.y+=d.vy*dt;d.mesh.position.z+=d.vz*dt;d.mesh.rotation.x+=d.vr*dt;d.mesh.rotation.z+=d.vr*.7*dt;if(d.mesh.position.y<.18){d.mesh.position.y=.18;d.vy*=-.2;d.vx*=.8;d.vz*=.8;}d.life-=dt;}S.debris=S.debris.filter(d=>{if(d.life>0)return true;scene.remove(d.mesh);return false;});for(const w of S.weapons){w.vy-=5.8*dt;w.mesh.position.x+=w.vx*dt;w.mesh.position.y+=w.vy*dt;w.mesh.position.z+=w.vz*dt;w.mesh.rotation.z+=w.vr*dt;if(w.mesh.position.y<.1){w.mesh.position.y=.1;w.vy*=-.18;w.vx*=.78;w.vz*=.78;w.vr*=.8;}}for(const p of S.sparks){p.vy-=4.5*dt;p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;p.life-=dt;p.mesh.material.opacity=Math.max(0,p.life/p.max);}S.sparks=S.sparks.filter(p=>{if(p.life>0)return true;scene.remove(p.mesh);return false;});}
 function status(f,root){root.innerHTML=['head','torso','leftArm','rightArm','leftLeg','rightLeg'].map(n=>{const p=f.parts[n],pct=Math.max(0,p.hp/p.max),cl=!p.attached?'off':pct<.36?'warn':'';return '<div class="limb-chip '+cl+'"><span>'+LABEL[n]+'</span><b>'+(p.attached?Math.round(pct*100)+'%':'분리')+'</b></div>'}).join('');}
