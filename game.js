@@ -17,6 +17,7 @@ const S={running:false,finished:false,time:0,speed:1,red:null,blue:null,debris:[
 
 function mat(c,metal=.25,rough=.45){return new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough});}
 function mesh(g,m){const x=new THREE.Mesh(g,m);x.castShadow=true;x.receiveShadow=true;return x;}
+function ellipsoid(x,y,z,m,seg=20){const e=mesh(new THREE.SphereGeometry(1,seg,Math.max(12,Math.floor(seg*.75))),m);e.scale.set(x,y,z);return e;}
 function limb(radius,len,m,lower=.82){const g=new THREE.Group();const b=mesh(new THREE.CylinderGeometry(radius,Math.max(.055,radius*lower),len,16),m);g.add(b);const capR=radius*.72;const a=mesh(new THREE.SphereGeometry(capR,14,10),m);a.scale.y=.72;a.position.y=len/2;g.add(a);const c=a.clone();c.position.y=-len/2;g.add(c);return g;}
 function joint(r=.12){const j=mesh(new THREE.SphereGeometry(r,16,12),mat(0x080d14,.55,.26));j.scale.y=.82;return j;}
 function weapon(type){
@@ -45,24 +46,49 @@ function environment(){
   const grid=new THREE.GridHelper(16,24,0x35445a,0x202936);grid.position.y=.015;grid.material.transparent=true;grid.material.opacity=.34;scene.add(grid);
   const ring=mesh(new THREE.TorusGeometry(8,.085,12,100),mat(0x59687d,.78,.22));ring.rotation.x=Math.PI/2;ring.position.y=.045;scene.add(ring);
 }
-function addArm(f,side){const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.53*sg,.65,0);f.torsoPivot.add(p);f.pivots[side+'Arm']=p;const shoulder=joint(.13);p.add(shoulder);const up=limb(.125,.64,f.bodyMat,.78);up.position.y=-.34;p.add(up);const elbow=new THREE.Group();elbow.position.y=-.66;p.add(elbow);elbow.add(joint(.095));const low=limb(.1,.58,f.bodyMat,.7);low.position.y=-.31;elbow.add(low);const hand=mesh(new THREE.BoxGeometry(.16,.2,.12),f.bodyMat);hand.position.y=-.63;hand.rotation.z=.04*sg;elbow.add(hand);const anchor=new THREE.Group();anchor.position.set(0,-.63,0);elbow.add(anchor);f.refs[side+'Hand']=anchor;f.refs[side+'Elbow']=elbow;}
-function addLeg(f,side){const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.22*sg,-.96,0);f.torsoPivot.add(p);f.pivots[side+'Leg']=p;const hip=joint(.14);p.add(hip);const up=limb(.17,.84,f.bodyMat,.78);up.position.y=-.44;p.add(up);const knee=new THREE.Group();knee.position.y=-.86;p.add(knee);knee.add(joint(.115));const low=limb(.135,.8,f.bodyMat,.68);low.position.y=-.41;knee.add(low);const foot=mesh(new THREE.BoxGeometry(.26,.13,.5),f.bodyMat);foot.position.set(0,-.84,.14);foot.rotation.x=-.06;knee.add(foot);}
+function addArm(f,side){
+  const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.54*sg,.67,0);f.torsoPivot.add(p);f.pivots[side+'Arm']=p;
+  const shoulder=joint(.13);p.add(shoulder);
+  const up=limb(.12,.66,f.bodyMat,.76);up.position.y=-.35;p.add(up);
+  const elbow=new THREE.Group();elbow.position.y=-.68;p.add(elbow);elbow.add(joint(.09));
+  const low=limb(.095,.58,f.bodyMat,.68);low.position.y=-.31;elbow.add(low);
+  const wrist=new THREE.Group();wrist.position.y=-.62;elbow.add(wrist);wrist.add(joint(.072));
+  const hand=ellipsoid(.085,.13,.07,f.bodyMat,16);hand.position.y=-.13;hand.rotation.z=.05*sg;wrist.add(hand);
+  const anchor=new THREE.Group();anchor.position.set(0,-.15,0);wrist.add(anchor);
+  f.refs[side+'Hand']=anchor;f.refs[side+'Elbow']=elbow;f.refs[side+'Wrist']=wrist;
+}
+function addLeg(f,side){
+  const sg=side==='left'?-1:1,p=new THREE.Group();p.position.set(.22*sg,-.93,0);f.pelvisPivot.add(p);f.pivots[side+'Leg']=p;
+  const hip=joint(.135);p.add(hip);
+  const up=limb(.165,.84,f.bodyMat,.76);up.position.y=-.44;p.add(up);
+  const knee=new THREE.Group();knee.position.y=-.86;p.add(knee);knee.add(joint(.11));
+  const low=limb(.13,.78,f.bodyMat,.66);low.position.y=-.4;knee.add(low);
+  const ankle=new THREE.Group();ankle.position.y=-.81;knee.add(ankle);ankle.add(joint(.07));
+  const foot=ellipsoid(.135,.075,.285,f.bodyMat,16);foot.position.set(0,-.08,.13);ankle.add(foot);
+  f.refs[side+'Knee']=knee;f.refs[side+'Ankle']=ankle;
+}
 function fighter(team,x,facing,type){
   const color=team==='red'?0xff3b47:0x3d7cff;
   const f={team,color,x,z:team==='red'?-.58:.58,facing,weapon:type,weaponHeld:true,bleed:0,bleedRate:0,parts:parts(),vx:0,cool:.45+Math.random()*.35,action:'neutral',actionTime:0,actionDur:0,attackKind:null,target:null,hitDone:false,blocked:false,stagger:0,reactionCD:0,parryCD:0,clashCD:0,seed:Math.random()*1000,group:new THREE.Group(),pivots:{},refs:{},bodyMat:mat(color,.32,.34)};
   f.group.position.set(x,0,f.z);scene.add(f.group);
   const sh=new THREE.Mesh(new THREE.CircleGeometry(.72,32),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.32}));sh.rotation.x=-Math.PI/2;sh.position.y=.03;f.group.add(sh);f.shadow=sh;
-  const tp=new THREE.Group();tp.position.y=2.62;f.group.add(tp);f.torsoPivot=tp;f.pivots.torso=tp;
-  const chest=mesh(new THREE.BoxGeometry(.9,.92,.42),f.bodyMat);chest.position.y=.28;chest.scale.x=1.04;tp.add(chest);
-  const upperChest=mesh(new THREE.BoxGeometry(1.02,.34,.4),f.bodyMat);upperChest.position.y=.73;upperChest.scale.z=.92;tp.add(upperChest);
-  const abdomen=mesh(new THREE.CylinderGeometry(.32,.37,.5,16),f.bodyMat);abdomen.position.y=-.42;tp.add(abdomen);
-  const pelvis=mesh(new THREE.BoxGeometry(.7,.36,.38),f.bodyMat);pelvis.position.y=-.79;tp.add(pelvis);
-  const sternum=mesh(new THREE.BoxGeometry(.38,.7,.05),mat(color,.7,.18));sternum.position.set(0,.28,.235);tp.add(sternum);
-  const hp=new THREE.Group();hp.position.y=1.18;tp.add(hp);f.pivots.head=hp;
-  const neck=mesh(new THREE.CylinderGeometry(.105,.12,.28,12),f.bodyMat);neck.position.y=-.17;hp.add(neck);
-  const head=mesh(new THREE.SphereGeometry(.37,22,18),f.bodyMat);head.scale.set(.86,1.04,.9);head.position.y=.27;hp.add(head);
-  const jaw=mesh(new THREE.BoxGeometry(.44,.2,.38),f.bodyMat);jaw.position.set(0,.05,.02);jaw.scale.x=.92;hp.add(jaw);
-  const visor=mesh(new THREE.BoxGeometry(.34,.075,.045),mat(0xeef5ff,.3,.15));visor.position.set(0,.33,.335);hp.add(visor);
+  const waist=new THREE.Group();waist.position.y=2.62;f.group.add(waist);f.waistPivot=waist;f.pelvisPivot=waist;
+  const pelvis=ellipsoid(.4,.24,.29,f.bodyMat,22);pelvis.position.y=-.74;waist.add(pelvis);
+  const abdomen=mesh(new THREE.CylinderGeometry(.31,.36,.54,18),f.bodyMat);abdomen.position.y=-.35;waist.add(abdomen);
+  const tp=new THREE.Group();tp.position.y=.08;waist.add(tp);f.torsoPivot=tp;f.pivots.torso=tp;
+  const chest=ellipsoid(.53,.58,.29,f.bodyMat,24);chest.position.y=.28;tp.add(chest);
+  const upperChest=ellipsoid(.59,.25,.3,f.bodyMat,24);upperChest.position.y=.7;tp.add(upperChest);
+  const sternum=ellipsoid(.16,.38,.035,mat(color,.72,.16),18);sternum.position.set(.01,.29,.285);tp.add(sternum);
+  const neckPivot=new THREE.Group();neckPivot.position.y=1.1;tp.add(neckPivot);f.pivots.neck=neckPivot;
+  const neck=mesh(new THREE.CylinderGeometry(.1,.115,.28,14),f.bodyMat);neck.position.y=.02;neckPivot.add(neck);
+  const hp=new THREE.Group();hp.position.y=.21;neckPivot.add(hp);f.pivots.head=hp;
+  const head=ellipsoid(.31,.4,.31,f.bodyMat,24);head.position.y=.27;hp.add(head);
+  const jaw=ellipsoid(.25,.14,.255,f.bodyMat,20);jaw.position.set(.06,.06,0);hp.add(jaw);
+  const eyeWhite=mat(0xf3f6fb,.15,.2),pupilMat=new THREE.MeshStandardMaterial({color:0x05080d,metalness:.1,roughness:.2,emissive:0x0b1220,emissiveIntensity:.25});
+  for(const z of [-.105,.105]){
+    const eye=ellipsoid(.045,.055,.045,eyeWhite,14);eye.position.set(.285,.34,z);hp.add(eye);
+    const pupil=ellipsoid(.012,.023,.023,pupilMat,12);pupil.position.set(.327,.34,z);hp.add(pupil);
+  }
   addArm(f,'left');addArm(f,'right');addLeg(f,'left');addLeg(f,'right');
   const w=weapon(type);w.position.set(type==='spear'?.08:.24,-.02,0);f.refs.rightHand.add(w);f.weaponObj=w;return f;
 }
@@ -118,21 +144,25 @@ function animate(f,dt){
   const target=f.facing>0?0:Math.PI;let diff=((target-f.group.rotation.y+Math.PI)%(Math.PI*2))-Math.PI;f.group.rotation.y+=diff*Math.min(1,dt*9);
 
   const baseY=2.62+Math.abs(Math.sin(t*7+f.seed))*.055*m;
-  f.torsoPivot.position.y=baseY-(f.action==='attack'?.07*strike:0);
+  f.waistPivot.position.y=baseY-(f.action==='attack'?.07*strike:0);
+  f.pelvisPivot.rotation.y=THREE.MathUtils.lerp(f.pelvisPivot.rotation.y,-walk*.035,Math.min(1,dt*8));
   let torsoZ=f.stagger>0?-.08:f.vx*.018,torsoY=0,torsoX=0;
   if(f.action==='attack'&&f.attackKind==='spear'){torsoZ=-.11*strike+.045*wind;torsoY=-.08*wind+.05*strike;torsoX=-.035*strike;}
   if(f.action==='attack'&&f.attackKind==='knife'){torsoZ=-.055*strike;torsoY=-.38*wind+.58*strike-.18*recover;torsoX=-.03*strike;}
   f.torsoPivot.rotation.z=THREE.MathUtils.lerp(f.torsoPivot.rotation.z,torsoZ,Math.min(1,dt*10));
   f.torsoPivot.rotation.y=THREE.MathUtils.lerp(f.torsoPivot.rotation.y,torsoY,Math.min(1,dt*10));
   f.torsoPivot.rotation.x=THREE.MathUtils.lerp(f.torsoPivot.rotation.x,torsoX,Math.min(1,dt*10));
+  f.pivots.neck.rotation.y=THREE.MathUtils.lerp(f.pivots.neck.rotation.y,.05*f.facing-(f.action==='attack'?.04*strike:0),Math.min(1,dt*8));
+  f.pivots.neck.rotation.z=THREE.MathUtils.lerp(f.pivots.neck.rotation.z,-torsoZ*.35,Math.min(1,dt*8));
   f.pivots.head.rotation.z=Math.sin(t*2.1+f.seed)*.018-(f.action==='attack'?.025*strike:0);
+  f.pivots.head.rotation.x=THREE.MathUtils.lerp(f.pivots.head.rotation.x,(f.action==='attack'&&f.attackKind==='spear'?-0.04*strike:0),Math.min(1,dt*8));
 
   let leftLeg=.17*walk,rightLeg=-.17*walk;
   if(f.action==='attack'&&f.attackKind==='spear'){leftLeg-=.18*wind;rightLeg+=.32*strike;}
   if(f.action==='attack'&&f.attackKind==='knife'){leftLeg-=.13*wind;rightLeg+=.2*strike;}
   if(f.attackKind==='kick'&&f.action==='attack'){leftLeg+=.82*strike;rightLeg+=.42*strike;}
-  if(f.parts.leftLeg.attached)f.pivots.leftLeg.rotation.x=leftLeg;
-  if(f.parts.rightLeg.attached)f.pivots.rightLeg.rotation.x=rightLeg;
+  if(f.parts.leftLeg.attached){f.pivots.leftLeg.rotation.x=leftLeg;f.refs.leftKnee.rotation.x=.14*Math.max(0,-walk)+.09*strike;f.refs.leftAnkle.rotation.x=-.09*walk-.04*strike;}
+  if(f.parts.rightLeg.attached){f.pivots.rightLeg.rotation.x=rightLeg;f.refs.rightKnee.rotation.x=.14*Math.max(0,walk)+.11*strike;f.refs.rightAnkle.rotation.x=.09*walk+.03*strike;}
 
   if(f.parts.leftArm.attached){
     let lx=-.08-.1*walk,lz=.08,ly=0;
@@ -147,6 +177,8 @@ function animate(f,dt){
       if(!f.weaponHeld&&f.attackKind==='punch'&&f.action==='attack')lz=.92*strike;
     }
     f.pivots.leftArm.rotation.set(lx,ly,lz);
+    f.refs.leftWrist.rotation.x=.08*Math.sin(t*3+f.seed)+(f.action==='parry'?.18*ps:0);
+    f.refs.leftWrist.rotation.z=f.weaponHeld&&f.weapon==='spear'?.12:0;
   }
 
   if(f.parts.rightArm.attached){
@@ -165,6 +197,11 @@ function animate(f,dt){
       if(f.action==='parry'){rz=.5+.9*ps;rx=-.12-.22*ps;ry=.22*ps;}
     }else if(f.attackKind==='punch'&&f.action==='attack')rz=.98*strike;
     f.pivots.rightArm.rotation.set(rx,ry,rz);
+    let wristX=.04*Math.sin(t*2.7+f.seed),wristY=0,wristZ=0;
+    if(f.weaponHeld&&f.weapon==='knife'&&f.action==='attack'){wristY=-.18*wind+.16*strike;wristZ=.22*strike;}
+    if(f.weaponHeld&&f.weapon==='spear'){wristX=0;wristY=0;wristZ=0;}
+    if(f.action==='parry'){wristY=.16*ps;wristZ=-.18*ps;}
+    f.refs.rightWrist.rotation.set(wristX,wristY,wristZ);
   }
 
   if(f.weaponObj&&f.weaponHeld){
