@@ -27,9 +27,20 @@
 
 외부 3D 모델 파일 없이 Three.js 기본 Geometry로 더미와 무기를 생성합니다.
 
-## 실행
+## Vercel 배포
 
-정적 웹사이트입니다. 로컬에서는 HTTP 서버로 실행하는 것을 권장합니다.
+이 프로젝트는 빌드 과정이 없는 정적 사이트입니다.
+
+1. Vercel에서 **Add New → Project**
+2. GitHub의 `Dummy_fight` 저장소 선택
+3. Framework Preset은 **Other**
+4. Build Command는 비워둠
+5. Output Directory도 비워둠
+6. Deploy
+
+루트의 `index.html`이 엔트리 포인트이며 `vercel.json`이 포함되어 있습니다.
+
+## 로컬 실행
 
 ```bash
 python -m http.server 8000
@@ -37,7 +48,7 @@ python -m http.server 8000
 
 그 후 `http://localhost:8000`에 접속하면 됩니다.
 
-`game.js`가 ES Module이며 Three.js를 CDN에서 가져오므로 단순 `file://` 실행보다는 로컬 서버나 GitHub Pages 환경이 적합합니다.
+`game.js`는 ES Module이며 Three.js를 CDN에서 가져옵니다.
 
 ## 표현 방식
 
